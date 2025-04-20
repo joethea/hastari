@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuis Interaktif dengan Timer dan Efek Suara</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            background-color: #34495e;
+            flex-direction: column;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2vw;
+            text-align: center;
+            max-width: 90vw;
+            width: 90vw;
+            padding: 1vh 0;
+            margin-top: auto;
+            margin-bottom: auto;
+        }
+        .number {
+            font-size: 8vw;
+            color: #ecf0f1;
+            background-color: #2c3e50;
+            border-radius: 2vw;
+            padding: 2vw;
+            transition: transform 0.3s, background-color 0.3s;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .number:hover {
+            transform: scale(1.1);
+            background-color: #e74c3c;
+        }
+        #quiz-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            width: 100%;
+            max-width: 90%;
+            padding-bottom: 80px;
+            background-color: #34495e;
+            border-radius: 10px;
+            overflow-x: hidden;
+            transition: opacity 0.3s;
+        }
+        #quiz-container.quiz-ended {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        #timer {
+            font-size: 1.5em;
+            color: white;
+            background-color: #34495e;
+            border-radius: 15px;
+            padding: 8px 15px;
+            text-align: center;
+        }
+        #popup-container, #scoreModal, #rekapPopup, #feedback-popup {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            text-align: center;
+            color: #34495e;
+            padding-top: 10%;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 7%;
+            width: 80%;
+            max-width: 40%;
+            margin: auto;
+            border-radius: 2%;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: black;
+        }
+        .selected {
+            background-color: yellow;
+        }
+        .correct {
+            background-color: green;
+        }
+        .incorrect {
+            background-color: red;
+        }
+        #rekap-scores-table {
+            width: 100%;
+            border-collapse: collapse;
+            color: white;
+        }
+        #rekap-scores-table th, #rekap-scores-table td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: center;
+        }
+        #rekap-scores-table th {
+            background-color: #2c3e50;
+        }
+        #rekap-scores-table td {
+            background-color: #34495e;
+        }
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+        #rekapPopup {
+            position: fixed;
+            z-index: 1000;
+            background-color: rgba(44, 62, 80, 0.9);
+            color: white;
+            border-radius: 3%;
+            padding: 7%;
+            width: 100%;
+            height: 100%;
+            margin: auto;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+        }
+        #rekap-scores {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 0;
+            padding: 2%;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        #rekap-scores table {
+            width: 100%;
+            border-collapse: collapse;
+            color: white;
+        }
+        #rekap-scores th, #rekap-scores td {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px;
+            text-align: center;
+        }
+        #rekap-scores th {
+            background-color: rgba(255, 255, 255, 0.1);
+            font-weight: bold;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+            margin: 20px 0;
+        }
+        #rekapPopup button:first-child {
+            margin-bottom: 40px;
+        }
+        button:hover {
+            background-color: #2980b9;
+            transform: scale(1.05);
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        #question-text {
+            display: none;
+            margin-top: 0px;
+            font-size: 2vw;
+            color: white;
+            margin-bottom: 20px;
+            width: 100%;
+            text-align: left;
+            overflow-x: hidden;
+        }
+        #options-wrapper {
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+            width: 100%;
+            padding: 10px 0;
+            overflow-x: hidden;
+        }
+        #options-container button {
+            width: 100%;
+            padding: 10px 15px;
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-bottom: 2px;
+            text-align: left;
+        }
+        #options-container button:hover {
+            background-color: #3498db;
+        }
+        #header {
+            display: none;
+            justify-content: center;
+            gap: 10px;
+            align-items: center;
+            width: 100%;
+            padding: 0;
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #102438;
+            border-top: 2px solid #34495e;
+            z-index: 1000;
+            height: 60px;
+        }
+        #left-header {
+            width: 20%;
+            display: flex;
+            flex-direction: column;
+        }
+        #center-header {
+            width: 10%;
+            display: flex;
+            flex-direction: column;
+        }
+        #right-header {
+            width: 60%;
+            display: flex;
+            justify-content: right;
+            align-items: center;
+        }
+        #icon-group-header {
+            width: 15%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        #answer-message {
+            font-size: 1.7em;
+            margin-left: 20px;
+        }
+        #answer-gif {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 10%;
+            z-index: 100;
+            display: none;
+        }
+        #answer-gif img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+        #answer-meme {
+            position: fixed;
+            top: 150px;
+            right: 10px;
+            width: 10%;
+            z-index: 100;
+            display: none;
+        }
+        #answer-meme img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+        #check-answer-button {
+            background-color: #26c934;
+        }
+        #check-answer-button:hover {
+            background-color: #04800e;
+        }
+        #check-answer-button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        #rekapButton {
+            padding: 8px 20px;
+            font-size: 1.00em;
+            height: 40px;
+            background-color: #e63320;
+            margin-left: 4%;
+            margin-right: 4%;
+        }
+        #check-answer-button {
+            margin-right: 10px;
+        }
+        #rekapButton:hover {
+            background-color: #e74c3c;
+        }
+        #rekapButton:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        #options-container button:hover {
+            background-color: #3498db;
+            transform: scale(1.01);
+        }
+        #options-container button.selected {
+            background-color: yellow;
+            color: black;
+        }
+        #options-container button.correct {
+            background-color: green;
+        }
+        #options-container button.incorrect {
+            background-color: red;
+        }
+        #scoreModal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background-color: silver;
+            color: black;
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+            width: 80%;
+            max-width: 450px;
+            height: 50vh;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        #scoreModal .close {
+            color: #333;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        #scoreModal .close:hover {
+            color: #000;
+        }
+        #finalScoreDetails {
+            font-size: 1.2em;
+            margin-top: 10px;
+            text-align: left;
+            padding: 20px;
+        }
+        #confirm-name-button:disabled {
+            background-color: #e3a394;
+            color: #fff;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        #select-name-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            color: black;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1001;
+            text-align: center;
+            box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.2);
+            height: 460px;
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        #name-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+        #name-list button {
+            font-size: 110%;
+            width: 90%;
+            padding: 2.2%;
+            margin: 1% 0;
+            background-color: #40acf5;
+            color: white;
+            border: none;
+            border-radius: 2%;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #name-list button:hover {
+            background-color: #2980b9;
+        }
+        #name-list button.selected {
+            background-color: #015891;
+            color: white;
+        }
+        #confirm-name-button {
+            background-color: #e03a19;
+            padding: 10px 16%;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            position: sticky;
+            bottom: 110;
+            margin-top: 20px;
+            z-index: 10;
+        }
+        #confirm-name-button:hover {
+            background-color: #ff6c4f;
+        }
+        .action-buttons-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 50px;
+            margin-left: 140%;
+        }
+        .icon-box {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f5f5f5;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .icon-wrapper {
+            display: flex;
+            flex-direction: row;
+            gap: 15px;
+        }
+        .fullscreen-button-popup, .volume-button-popup, .link-button, .refresh-button1 {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.2s, filter 0.2s;
+        }
+        .fullscreen-button-popup:active, .volume-button-popup:active, .link-button:active, .refresh-button1:active {
+            transform: scale(0.9);
+            filter: brightness(0.8);
+        }
+        .fullscreen-button-popup img, .volume-button-popup img, .link-button img, .refresh-button1 img {
+            width: 40px;
+            height: 40px;
+            border-radius: 5%;
+        }
+        #volume-control-popup {
+            position: absolute;
+            bottom: 120px;
+            background-color: #2c3e50;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        #volume-slider-popup {
+            width: 100px;
+            cursor: pointer;
+        }
+        .close-button {
+            font-size: 24px;
+            font-weight: bold;
+            color: #aaa;
+            float: right;
+            cursor: pointer;
+            margin-top: -10px;
+        }
+        .close-button:hover {
+            color: black;
+        }
+        #fullscreen-button {
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+            margin: 10px;
+        }
+        #fullscreen-button:hover {
+            transform: scale(1.05);
+        }
+        #fullscreen-button:active {
+            transform: scale(0.95);
+        }
+        .loading-container {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+        }
+        .wave {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .wave div {
+            width: 1vw;
+            height: 8vh;
+            margin: 6%;
+            background-color: #00ff44;
+            animation: wave 1.6s infinite ease-in-out;
+        }
+        .wave div:nth-child(1) { animation-delay: -1.2s; }
+        .wave div:nth-child(2) { animation-delay: -1s; }
+        .wave div:nth-child(3) { animation-delay: -0.8s; }
+        .wave div:nth-child(4) { animation-delay: -0.6s; }
+        .wave div:nth-child(5) { animation-delay: -0.4s; }
+        @keyframes wave {
+            0%, 40%, 100% {
+                transform: scaleY(0.4);
+            }
+            20% {
+                transform: scaleY(1);
+            }
+        }
+        .label-loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            color: #ffffff;
+            font-size: 1.2em;
+            margin-top: 9%;
+            text-align: center;
+            animation: fadeIn 1.5s ease-in-out infinite;
+        }
+        @keyframes fadeIn {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+        #volume-control {
+            position: absolute;
+            bottom: 70px;
+            right: 240;
+            background-color: #2c3e50;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        #volume-slider {
+            width: 100px;
+            cursor: pointer;
+        }
+        #congratulations-message {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 2em;
+            font-weight: bold;
+            text-align: center;
+            z-index: 2001;
+            animation: fadeInOut 3s ease-in-out;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+        #countdown-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #countdown-text {
+            font-size: 10vw;
+            color: white;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+            animation: pulse 0.5s ease-in-out;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .divider {
+            width: 80%;
+            height: 1px;
+            background-color: #ed3709;
+            margin: -70px auto;
+            border-radius: 1px;
+        }
+        .Label-klp, .Label-refresh, .Label-volume, .Label-fullscreen {
+            color: #ababab;
+            font-size: 11px;
+            margin-top: 5px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div id="overlay"></div>
+<div id="countdown-overlay" style="display: none;">
+    <div id="countdown-text"></div>
+</div>
+<div id="welcome-screen" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.9); z-index: 2001; justify-content: center; align-items: center; flex-direction: column; color: white; text-align: center;">
+    <h2>Selamat Datang di Kuis Interaktif!</h2>
+    <h2>Pelajaran BAHASA INDONESIA oleh Ibu Hastari, S.Pd</h2>
+    <p>Klik tombol di bawah untuk memulai kuis dalam mode layar penuh.</p>
+    <button id="start-fullscreen-button" style="background-color: #3498db; color: white; border: none; border-radius: 5px; padding: 15px 30px; font-size: 1.2em; cursor: pointer; transition: background-color 0.3s, transform 0.3s;" onmouseover="this.style.backgroundColor='#2980b9'; this.style.transform='scale(1.05)';" onmouseout="this.style.backgroundColor='#3498db'; this.style.transform='scale(1)';" onclick="startFullScreen()">Aktifkan Layar Penuh</button>
+</div>
+<div class="loading-container" id="loadingContainer" style="display: none;">
+    <div class="wave">
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+    <span class="label-loading">Mohon Tunggu,<br>Sedang mendapatkan Data...</span>
+</div>
+<div id="select-name-popup" class="modal-content" style="display: none;">
+    <h2>PILIH NAMA KELOMPOK</h2>
+    <div id="name-list"></div>
+    <button id="confirm-name-button" onclick="confirmName()" disabled>IKUTI KUIS</button>
+    <div class="divider"></div>
+    <div class="button-container">
+        <div class="icon-box">
+            <div class="icon-wrapper">
+                <div class="action-button-wrapper">
+                    <a class="link-button" href="https://docs.google.com/spreadsheets/d/14RRoD4x69MFzx89n9ZtOTcBUtNE-Bg1F5sfExpCJs1I/edit?gid=0#gid=0" target="_blank" title="Buka Tautan">
+                        <img src="system/img.png" alt="Ikon Ubah Kelompok" style="width: 30px; height: 36px; border-radius: 5%; cursor: pointer;">
+                    </a>
+                    <span class="Label-klp">Ubah<br>Kelompok</span>
+                </div>
+                <div class="action-button-wrapper">
+                    <a class="refresh-button1" title="Reset" onclick="resetQuizData()">
+                        <img src="system/reset.png" alt="Ikon Reset" style="width: 40px; height: 40px; border-radius: 5%; cursor: pointer;" id="resetButton">
+                    </a>
+                    <span class="Label-refresh">Reset<br> Kuis</span>
+                </div>
+                <div class="action-button-wrapper">
+                    <a class="volume-button-popup" title="Atur Volume" onclick="toggleVolumeControl('popup')">
+                        <img src="system/volume.png" alt="Ikon Volume" style="width: 40px; height: 40px; border-radius: 5%; cursor: pointer;">
+                    </a>
+                    <span class="Label-volume">Atur<br>Volume</span>
+                </div>
+                <div class="action-button-wrapper">
+                    <a class="fullscreen-button-popup" title="Layar Penuh" onclick="toggleFullScreen()">
+                        <img src="system/screen.png" alt="Ikon Layar Penuh" style="width: 40px; height: 40px; border-radius: 5%; cursor: pointer;">
+                    </a>
+                    <span class="Label-fullscreen">Layar<br>Penuh</span>
+                </div>
+            </div>
+        </div>
+        <div id="volume-control-popup">
+            <input type="range" id="volume-slider-popup" min="0" max="1" step="0.01" value="1">
+        </div>
+    </div>
+</div>
+<div class="container" id="number-grid" style="display: none;">
+    <div class="number" onclick="selectGroup(1)">1</div>
+    <div class="number" onclick="selectGroup(2)">2</div>
+    <div class="number" onclick="selectGroup(3)">3</div>
+    <div class="number" onclick="selectGroup(4)">4</div>
+    <div class="number" onclick="selectGroup(5)">5</div>
+    <div class="number" onclick="selectGroup(6)">6</div>
+    <div class="number" onclick="selectGroup(7)">7</div>
+    <div class="number" onclick="selectGroup(8)">8</div>
+    <div class="number" onclick="selectGroup(9)">9</div>
+</div>
+<div id="quiz-container" style="display: none;">
+    <h2 id="question-text">Silahkan Tunggu, Sedang mendapatkan Soal...</h2>
+    <div id="options-wrapper">
+        <div id="options-container"></div>
+    </div>
+    <div id="header">
+        <div id="center-header">
+            <div id="timer">3:00</div>
+        </div>
+        <div id="left-header">
+            <div id="answer-message" style="display: none;"></div>
+        </div>
+        <div id="right-header">
+            <button id="check-answer-button" onclick="checkAnswer()">Cek Jawaban</button>
+            <button id="rekapButton" onclick="toggleRekapPopup()">Lihat Rekap Nilai</button>
+        </div>
+        <div id="icon-group-header">
+            <div>
+                <a class="refresh-button" title="Reload">
+                    <img src="system/refresh.png" alt="Ikon" style="width: 50px; height: 50px; margin-top: 0px; border-radius: 5%; cursor: pointer;" onclick="reloadPage()">
+                </a>
+            </div>
+            <div style="position: relative;">
+                <a id="volume-button" class="volume-button" title="Atur Volume">
+                    <img src="system/volume.png" alt="Ikon Volume" style="width: 50px; height: 50px; margin-top: 0px; border-radius: 5%; cursor: pointer;" onclick="toggleVolumeControl('header')">
+                </a>
+                <div id="volume-control">
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="1">
+                </div>
+            </div>
+            <div>
+                <a id="fullscreen-button" class="fullscreen-button" title="Layar Penuh">
+                    <img src="system/screen.png" alt="Ikon" style="width: 50px; height: 50px; margin-top: 0px; border-radius: 5%; cursor: pointer;" onclick="toggleFullScreen()">
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="popup-container" style="display: none;">
+    <div class="popup">Pesan Popup</div>
+</div>
+<div id="rekapPopup" class="modal-content" style="display: none;">
+    <span class="close" onclick="toggleRekapPopup()">×</span>
+    <h2>Rekap Hasil Kuis</h2>
+    <table id="rekap-scores-table">
+        <thead>
+            <tr>
+                <th>NAMA KELOMPOK</th>
+                <th>NOMOR</th>
+                <th>NILAI</th>
+                <th>WAKTU</th>
+            </tr>
+        </thead>
+        <tbody id="rekap-scores"></tbody>
+    </table>
+    <button id="resetButton" onclick="resetQuizData()">Reset Data</button>
+    <button id="homeButton" onclick="toggleRekapPopup()">Kembali</button>
+</div>
+<div id="answer-gif"></div>
+<div id="answer-meme"></div>
+<div id="congratulations-message">Selamat! Kuis Selesai!</div>
+<script>
+let isLoadingQuestion = false;
+let currentQuestion = 0;
+let currentSet = [];
+let score = 0;
+let timer;
+let timePerQuestion = 0;
+let selectedAnswer = null;
+let participantInfo = '';
+let totalTimeUsed = 0;
+let startTime;
+let selectedGroup = null;
+let isAnswerSelected = false;
+let lastScrollPosition = 0;
+
+const soundWelcome = new Audio('system/musik_welcome.mp3');
+soundWelcome.loop = true;
+const soundStart = new Audio('system/musik_background.mp3');
+soundStart.loop = true;
+const soundCorrect = new Audio('system/musik_benar.mp3');
+const soundIncorrect = new Audio('system/musik_salah.mp3');
+const soundTick = new Audio('system/musik_detik.mp3');
+const soundTimeUp = new Audio('system/musik_out_timer.mp3');
+const soundEnd = new Audio('system/musik_skor_akhir.mp3');
+const soundClick = new Audio('system/musik_click.mp3');
+const soundMulai = new Audio('system/musik_mulai.mp3');
+
+function fetchWithTimeout(url, options = {}, timeout = 10000) {
+    console.log('fetchWithTimeout: Initiating fetch with timeout', url);
+    return Promise.race([
+        fetch(url, options),
+        new Promise((_, reject) =>
+            setTimeout(() => {
+                console.error('fetchWithTimeout: Request timed out', url);
+                reject(new Error('Request timed out'));
+            }, timeout)
+        )
+    ]);
+}
+
+function ensureFullScreen() {
+    console.log('ensureFullScreen: Checking fullscreen status');
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        try {
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen();
+                console.log('ensureFullScreen: Entered fullscreen mode');
+            } else if (document.documentElement.webkitRequestFullscreen) {
+                document.documentElement.webkitRequestFullscreen();
+                console.log('ensureFullScreen: Entered webkit fullscreen mode');
+            }
+        } catch (error) {
+            console.error('ensureFullScreen: Failed to enter fullscreen:', error);
+        }
+    }
+}
+
+async function startFullScreen() {
+    console.log('startFullScreen: "Aktifkan Layar Penuh" button clicked');
+    const loadingContainer = document.getElementById('loadingContainer');
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const header = document.getElementById('header');
+    
+    header.style.display = 'none';
+    welcomeScreen.style.display = 'none';
+    loadingContainer.style.display = 'flex';
+    
+    localStorage.setItem('fullscreenRequested', 'true');
+    
+    try {
+        ensureFullScreen();
+    } catch (error) {
+        console.error('startFullScreen: Fullscreen error:', error);
+    }
+    
+    let usedGroups = new Set();
+    try {
+        console.log('startFullScreen: Fetching used groups');
+        usedGroups = await fetchUsedGroups();
+        console.log('startFullScreen: Used groups fetched:', [...usedGroups]);
+    } catch (error) {
+        console.error('startFullScreen: Failed to fetch used groups:', error);
+        loadingContainer.style.display = 'none';
+        welcomeScreen.style.display = 'flex';
+        alert('Gagal memuat data kelompok. Pastikan koneksi internet stabil.');
+        return;
+    }
+    
+    try {
+        console.log('startFullScreen: Showing name popup');
+        await showNamePopup();
+        console.log('startFullScreen: Showing group grid');
+        showGrid(usedGroups);
+    } catch (error) {
+        console.error('startFullScreen: Failed to show name popup or grid:', error);
+        loadingContainer.style.display = 'none';
+        welcomeScreen.style.display = 'flex';
+        alert('Gagal menampilkan popup nama. Coba lagi.');
+        return;
+    }
+    
+    try {
+        console.log('startFullScreen: Playing click sound');
+        playSoundWithRetry(soundClick);
+        console.log('startFullScreen: Playing welcome sound');
+        soundWelcome.play();
+    } catch (error) {
+        console.error('startFullScreen: Failed to play sounds:', error);
+    }
+    
+    console.log('startFullScreen: Hiding loading container');
+    loadingContainer.style.display = 'none';
+}
+
+async function fetchUsedGroups() {
+    console.log('fetchUsedGroups: Fetching group data');
+    try {
+        const response = await fetchWithTimeout('https://script.google.com/macros/s/AKfycbyHJZjxfrBgOEh0njjfOobwbiHDLpy4ndxuS6hecOWYF8eInuKhCD19Aq-YcpQn6P53Fw/exec', {}, 10000);
+        const data = await response.json();
+        console.log('fetchUsedGroups: Data received:', data);
+        return new Set(data.usedGroups);
+    } catch (error) {
+        console.error('fetchUsedGroups: Error:', error);
+        throw error;
+    }
+}
+
+async function resetQuizData() {
+    console.log('resetQuizData: Resetting quiz data');
+    playSoundWithRetry(soundClick);
+    const loadingContainer = document.getElementById('loadingContainer');
+    const labelLoading = document.querySelector('.label-loading');
+    const originalLoadingText = labelLoading.innerHTML;
+    labelLoading.innerHTML = 'Mohon Tunggu,<br>Sedang Mereset Data...';
+    loadingContainer.style.display = 'flex';
+    
+    const confirmation = confirm("Apakah Anda yakin ingin mereset semua data untuk memulai Kuis?");
+    if (!confirmation) {
+        labelLoading.innerHTML = originalLoadingText;
+        loadingContainer.style.display = 'none';
+        return;
+    }
+    
+    try {
+        const response = await fetchWithTimeout('https://script.google.com/macros/s/AKfycbxSQaBMZUsUOMNkRmKjQt3zTBma3VZIapJw921HrzBElH1mbTlBCJfIkFZRoyAu3qFV/exec?action=reset', {}, 10000);
+        const result = await response.json();
+        labelLoading.innerHTML = originalLoadingText;
+        loadingContainer.style.display = 'none';
+        
+        if (result.status === 'success') {
+            alert(result.message);
+            ensureFullScreen();
+            showGrid(new Set());
+            setTimeout(() => {
+                window.location.href = window.location.href;
+            }, 500);
+        } else {
+            alert("Gagal mereset data: " + result.message);
+            ensureFullScreen();
+        }
+    } catch (error) {
+        console.error('resetQuizData: Error:', error);
+        labelLoading.innerHTML = originalLoadingText;
+        loadingContainer.style.display = 'none';
+        alert('Terjadi kesalahan saat mereset data.');
+        ensureFullScreen();
+    }
+}
+
+async function fetchRekapData() {
+    console.log('fetchRekapData: Fetching rekap data');
+    try {
+        const response = await fetchWithTimeout('https://script.google.com/macros/s/AKfycbxQDReH772qP2X16Py5cq6R5bR3qQpvsdrmlqxxPDlLsgvQn4SHM7z4eXw23zZlutDjuA/exec?action=getRekapData', {}, 10000);
+        const data = await response.json();
+        const rekapContainer = document.getElementById('rekap-scores');
+        rekapContainer.innerHTML = '';
+        
+        if (data.status === 'success') {
+            if (data.records.length === 0) {
+                rekapContainer.innerHTML = '<tr><td colspan="4">Belum ada hasil kuis yang tersimpan.</td></tr>';
+            } else {
+                data.records.sort((a, b) => b.nilai - a.nilai);
+                data.records.forEach(record => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${record.namaKelompok}</td>
+                        <td>${record.nomor}</td>
+                        <td>${record.nilai}</td>
+                        <td>${record.waktu} detik</td>
+                    `;
+                    rekapContainer.appendChild(row);
+                });
+            }
+        } else {
+            rekapContainer.innerHTML = '<tr><td colspan="4">Gagal memuat data rekap.</td></tr>';
+            alert('Terjadi kesalahan dalam mengambil data rekap.');
+            ensureFullScreen();
+        }
+    } catch (error) {
+        console.error('fetchRekapData: Error:', error);
+        const rekapContainer = document.getElementById('rekap-scores');
+        rekapContainer.innerHTML = '<tr><td colspan="4">Tidak dapat menghubungi server.</td></tr>';
+        alert('Tidak dapat menghubungi server. Pastikan koneksi internet stabil.');
+        ensureFullScreen();
+    }
+}
+
+async function showNamePopup() {
+    console.log('showNamePopup: Displaying name selection popup');
+    const header = document.getElementById('header');
+    const welcomeScreen = document.getElementById('welcome-screen');
+    header.style.display = 'none';
+    
+    try {
+        const nameListContainer = document.getElementById("name-list");
+        lastScrollPosition = nameListContainer.scrollTop;
+        console.log('showNamePopup: Saved scroll position:', lastScrollPosition);
+        
+        const response = await fetchWithTimeout('https://script.google.com/macros/s/AKfycbw_WHOInnTo863-ioAy_KUZqabz2ARIrQhz70FUO8PJhvtHGO-OUxewPQRvUXCKuWwSfw/exec', {}, 10000);
+        const data = await response.json();
+        console.log('showNamePopup: Name data received:', data);
+        nameListContainer.innerHTML = "";
+        const pesertaNames = data.peserta;
+        const usedNames = data.rekap;
+        
+        // Urutkan nama kelompok agar A-F muncul di atas
+        pesertaNames.sort((a, b) => {
+            const priorityNames = ['A', 'B', 'C', 'D', 'E', 'F'];
+            const aIsPriority = priorityNames.includes(a);
+            const bIsPriority = priorityNames.includes(b);
+            if (aIsPriority && bIsPriority) {
+                return priorityNames.indexOf(a) - priorityNames.indexOf(b);
+            } else if (aIsPriority) {
+                return -1;
+            } else if (bIsPriority) {
+                return 1;
+            } else {
+                return a.localeCompare(b);
+            }
+        });
+        
+        pesertaNames.forEach((name, index) => {
+            const button = document.createElement("button");
+            button.textContent = name;
+            if (usedNames[name]) {
+                button.disabled = true;
+                button.style.backgroundColor = 'silver';
+            } else {
+                button.onclick = () => {
+                    playSoundWithRetry(soundClick);
+                    selectName(index);
+                };
+            }
+            nameListContainer.appendChild(button);
+        });
+        
+        nameListContainer.scrollTop = lastScrollPosition;
+        console.log('showNamePopup: Restored scroll position:', lastScrollPosition);
+        
+        const selectNamePopup = document.getElementById("select-name-popup");
+        const rekapPopup = document.getElementById('rekapPopup');
+        const overlay = document.getElementById('overlay');
+        const numberGrid = document.getElementById('number-grid');
+        const loadingContainer = document.getElementById('loadingContainer');
+        
+        selectNamePopup.style.display = 'block';
+        overlay.style.display = 'block';
+        rekapPopup.style.display = 'none';
+        numberGrid.style.display = 'none';
+        loadingContainer.style.display = 'none';
+        console.log('showNamePopup: Popup displayed');
+        ensureFullScreen();
+    } catch (error) {
+        console.error('showNamePopup: Error:', error);
+        throw error;
+    }
+}
+
+let usedGroups = new Set();
+function showGrid(usedGroups) {
+    console.log('showGrid: Displaying number grid');
+    const gridContainer = document.getElementById("number-grid");
+    gridContainer.innerHTML = "";
+    
+    for (let i = 1; i <= 9; i++) {
+        const button = document.createElement("div");
+        button.textContent = i;
+        button.classList.add("number");
+        if (usedGroups.has(i)) {
+            button.style.backgroundColor = 'silver';
+            button.style.pointerEvents = 'none';
+        } else {
+            button.onclick = () => {
+                playSoundWithRetry(soundClick);
+                selectGroup(i);
+            };
+        }
+        gridContainer.appendChild(button);
+    }
+}
+
+async function confirmName() {
+    console.log('confirmName: Confirming name selection');
+    playSoundWithRetry(soundClick);
+    const selectedButton = document.querySelector("#name-list button.selected");
+    if (!selectedButton) {
+        alert("Silakan pilih nama peserta terlebih dahulu.");
+        ensureFullScreen();
+        return;
+    }
+    
+    selectedParticipantName = selectedButton.textContent;
+    document.getElementById("select-name-popup").style.display = "none";
+    const loadingContainer = document.getElementById('loadingContainer');
+    const header = document.getElementById('header');
+    const welcomeScreen = document.getElementById('welcome-screen');
+    loadingContainer.style.display = 'flex';
+    header.style.display = 'none';
+    
+    try {
+        usedGroups = await fetchUsedGroups();
+        console.log('confirmName: Used groups fetched:', [...usedGroups]);
+    } catch (error) {
+        console.error('confirmName: Failed to fetch group data:', error);
+        alert('Gagal memuat data kelompok.');
+        loadingContainer.style.display = 'none';
+        header.style.display = 'none';
+        welcomeScreen.style.display = 'flex';
+        ensureFullScreen();
+        return;
+    }
+    
+    showGrid(usedGroups);
+    document.getElementById("number-grid").style.display = "grid";
+    document.getElementById("overlay").style.display = 'none';
+    loadingContainer.style.display = 'none';
+    header.style.display = 'flex';
+    ensureFullScreen();
+}
+
+function selectName(index) {
+    console.log('selectName: Selecting name at index', index);
+    const buttons = document.querySelectorAll("#name-list button");
+    buttons.forEach(button => button.classList.remove("selected"));
+    buttons[index].classList.add("selected");
+    document.getElementById("confirm-name-button").disabled = false;
+}
+
+function setVolume(volume) {
+    console.log('setVolume: Setting volume to', volume);
+    soundWelcome.volume = volume;
+    soundStart.volume = volume;
+    soundCorrect.volume = volume;
+    soundIncorrect.volume = volume;
+    soundTick.volume = volume;
+    soundTimeUp.volume = volume;
+    soundEnd.volume = volume;
+    soundClick.volume = volume;
+    soundMulai.volume = volume;
+    localStorage.setItem('quizVolume', volume);
+}
+
+function initializeVolume() {
+    console.log('initializeVolume: Initializing volume');
+    const savedVolume = localStorage.getItem('quizVolume') || 1;
+    const volumeSlider = document.getElementById('volume-slider');
+    const volumeSliderPopup = document.getElementById('volume-slider-popup');
+    volumeSlider.value = savedVolume;
+    volumeSliderPopup.value = savedVolume;
+    setVolume(savedVolume);
+}
+
+function toggleVolumeControl(source) {
+    console.log('toggleVolumeControl: Toggling volume control for', source);
+    playSoundWithRetry(soundClick);
+    const volumeControlHeader = document.getElementById('volume-control');
+    const volumeControlPopup = document.getElementById('volume-control-popup');
+    if (source === 'header') {
+        volumeControlHeader.style.display = volumeControlHeader.style.display === 'block' ? 'none' : 'block';
+        volumeControlPopup.style.display = 'none';
+    } else if (source === 'popup') {
+        volumeControlPopup.style.display = volumeControlPopup.style.display === 'block' ? 'none' : 'block';
+        volumeControlHeader.style.display = 'none';
+    }
+}
+
+function initializeClickSound() {
+    console.log('initializeClickSound: Initializing click sound');
+    const clickableElements = document.querySelectorAll(
+        '#name-list button, #confirm-name-button, .number, #options-container button, #check-answer-button, #rekapButton, .refresh-button, .refresh-button1, .fullscreen-button, .fullscreen-button-popup, .volume-button, .volume-button-popup, #resetButton, #homeButton, .close, .link-button'
+    );
+    clickableElements.forEach(element => {
+        if (!element.disabled && element.style.pointerEvents !== 'none') {
+            element.addEventListener('click', () => {
+                playSoundWithRetry(soundClick);
+            });
+        }
+    });
+}
+
+function selectGroup(group) {
+    console.log('selectGroup: Selecting group', group);
+    if (!selectedParticipantName) {
+        showNamePopup();
+        return;
+    }
+    
+    selectedGroup = group;
+    participantInfo = selectedParticipantName;
+    usedGroups.add(group);
+    
+    const countdownOverlay = document.getElementById('countdown-overlay');
+    const countdownText = document.getElementById('countdown-text');
+    const header = document.getElementById('header');
+    countdownOverlay.style.display = 'flex';
+    let count = 3;
+    countdownText.textContent = count;
+    
+    const countdownInterval = setInterval(() => {
+        playSoundWithRetry(soundClick);
+        count--;
+        if (count > 0) {
+            countdownText.textContent = count;
+        } else {
+            countdownText.textContent = 'Mulai!';
+            playSoundWithRetry(soundMulai);
+            setTimeout(() => {
+                countdownOverlay.style.display = 'none';
+                clearInterval(countdownInterval);
+                fetchQuestions(group);
+                document.getElementById('number-grid').style.display = 'none';
+                document.getElementById('quiz-container').style.display = 'block';
+                document.getElementById('rekapButton').disabled = true;
+                document.getElementById('question-text').style.display = 'block';
+                header.style.display = 'flex';
+                soundWelcome.pause();
+                soundWelcome.currentTime = 0;
+                soundStart.play();
+            }, 1000);
+        }
+    }, 1000);
+}
+
+function fetchQuestions(group) {
+    console.log('fetchQuestions: Fetching questions for group', group);
+    const loadingContainer = document.getElementById('loadingContainer');
+    const header = document.getElementById('header');
+    const welcomeScreen = document.getElementById('welcome-screen');
+    
+    fetchWithTimeout(`https://script.google.com/macros/s/AKfycbz_C2ergZIy1SJ0UjckcgPWP1sggxkrUKXTShwDKaSCAruCmuf-IUuGGJX9B-JobNSOtw/exec?group=${group}`, {}, 10000)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log('fetchQuestions: Questions received, count:', data.data.length);
+                if (data.data.length !== 11) {
+                    console.warn('fetchQuestions: Unexpected question count:', data.data.length);
+                }
+                loadingContainer.style.display = 'none';
+                startQuiz(data.data);
+                ensureFullScreen();
+            } else {
+                console.error('fetchQuestions: Failed to load questions:', data.message);
+                loadingContainer.style.display = 'none';
+                alert(data.message);
+                welcomeScreen.style.display = 'flex';
+                ensureFullScreen();
+            }
+        })
+        .catch(error => {
+            console.error('fetchQuestions: Error:', error);
+            loadingContainer.style.display = 'none';
+            alert('Gagal memuat soal. Pastikan koneksi internet stabil.');
+            welcomeScreen.style.display = 'flex';
+            ensureFullScreen();
+        });
+}
+
+function startQuiz(questions) {
+    console.log('startQuiz: Starting quiz with', questions.length, 'questions');
+    currentSet = questions;
+    currentQuestion = 0;
+    score = 0;
+    totalTimeUsed = 0;
+    startTime = Date.now();
+    isAnswerSelected = false;
+    selectedAnswer = null;
+    isLoadingQuestion = false;
+    console.log('startQuiz: Initialization complete, currentQuestion:', currentQuestion, 'total questions:', currentSet.length);
+    loadQuestion();
+}
+
+function startTimer() {
+    console.log('startTimer: Starting timer');
+    clearInterval(timer);
+    timePerQuestion = 180;
+    document.getElementById('timer').textContent = 
+        `${Math.floor(timePerQuestion / 60)}:${timePerQuestion % 60 < 10 ? '0' : ''}${timePerQuestion % 60}`;
+    timer = setInterval(() => {
+        timePerQuestion--;
+        document.getElementById('timer').textContent = 
+            `${Math.floor(timePerQuestion / 60)}:${timePerQuestion % 60 < 10 ? '0' : ''}${timePerQuestion % 60}`;
+        if (timePerQuestion <= 10 && !isAnswerSelected) {
+            playSoundWithRetry(soundTick);
+        }
+        if (timePerQuestion <= 0) {
+            clearInterval(timer);
+            playSoundWithRetry(soundTimeUp);
+            addToTotalTime();
+            if (!isAnswerSelected) {
+                showAnswerPopup(false, true);
+                setTimeout(() => {
+                    loadNextQuestionOrEndQuiz();
+                }, 1000);
+            } else {
+                loadNextQuestionOrEndQuiz();
+            }
+        }
+    }, 1000);
+}
+
+function addToTotalTime() {
+    console.log('addToTotalTime: Adding used time');
+    totalTimeUsed += (180 - timePerQuestion);
+}
+
+function loadQuestion() {
+    if (isLoadingQuestion) {
+        console.log('loadQuestion: Already loading question, waiting...');
+        return;
+    }
+    isLoadingQuestion = true;
+    console.log('loadQuestion: Loading question', currentQuestion + 1, 'of', currentSet.length);
+    
+    soundTick.pause();
+    soundTick.currentTime = 0;
+    isAnswerSelected = false;
+    selectedAnswer = null;
+    document.getElementById("check-answer-button").style.display = "block";
+    document.getElementById("check-answer-button").disabled = true;
+    clearInterval(timer);
+    startTimer();
+    
+    const questionElement = document.getElementById('question-text');
+    const optionsContainer = document.getElementById('options-container');
+    optionsContainer.innerHTML = '';
+    
+    if (currentQuestion >= currentSet.length || !currentSet[currentQuestion]) {
+        console.error('loadQuestion: Invalid question index or question missing, ending quiz');
+        isLoadingQuestion = false;
+        endQuiz();
+        return;
+    }
+    
+    const question = currentSet[currentQuestion];
+    questionElement.textContent = question.question;
+    console.log('loadQuestion: Question loaded:', question.question);
+    
+    question.options.forEach((option, index) => {
+        const button = document.createElement('button');
+        button.textContent = option;
+        button.onclick = () => {
+            playSoundWithRetry(soundClick);
+            selectAnswer(index);
+        };
+        optionsContainer.appendChild(button);
+    });
+    
+    isLoadingQuestion = false;
+}
+
+function selectAnswer(index) {
+    console.log('selectAnswer: Selecting answer at index', index);
+    soundTick.pause();
+    soundTick.currentTime = 0;
+    isAnswerSelected = true;
+    selectedAnswer = index;
+    const buttons = document.querySelectorAll("#options-container button");
+    buttons.forEach((button, btnIndex) => {
+        button.classList.remove("selected", "correct", "incorrect");
+        if (btnIndex === index) {
+            button.classList.add("selected");
+        }
+    });
+    document.getElementById("check-answer-button").disabled = false;
+}
+
+function checkAnswer() {
+    console.log('checkAnswer: Checking answer');
+    soundTick.pause();
+    soundTick.currentTime = 0;
+    isAnswerSelected = true;
+    playSoundWithRetry(soundClick);
+    
+    if (selectedAnswer === null) {
+        alert("Silakan pilih jawaban terlebih dahulu.");
+        return;
+    }
+    
+    const isCorrect = selectedAnswer === currentSet[currentQuestion].correctAnswer;
+    if (isCorrect) {
+        score += 10;
+        playSoundWithRetry(soundCorrect);
+    } else {
+        playSoundWithRetry(soundIncorrect);
+    }
+    
+    const buttons = document.querySelectorAll("#options-container button");
+    buttons.forEach((button, btnIdx) => {
+        button.classList.remove("selected", "correct", "incorrect");
+        if (btnIdx === selectedAnswer) {
+            button.classList.add(isCorrect ? "correct" : "incorrect");
+        } else if (btnIdx === currentSet[currentQuestion].correctAnswer) {
+            button.classList.add("correct");
+        }
+    });
+    
+    showAnswerPopup(isCorrect);
+    addToTotalTime();
+    setTimeout(() => {
+        loadNextQuestionOrEndQuiz();
+    }, 1000);
+}
+
+function loadNextQuestionOrEndQuiz() {
+    if (isLoadingQuestion) {
+        console.log('loadNextQuestionOrEndQuiz: Already loading, delaying...');
+        setTimeout(loadNextQuestionOrEndQuiz, 500);
+        return;
+    }
+    
+    console.log('loadNextQuestionOrEndQuiz: Loading next question, currentQuestion before increment:', currentQuestion);
+    currentQuestion++;
+    console.log('loadNextQuestionOrEndQuiz: currentQuestion after increment:', currentQuestion);
+    
+    if (currentQuestion < currentSet.length) {
+        loadQuestion();
+    } else {
+        endQuiz();
+    }
+}
+
+function playSoundWithRetry(audio) {
+    console.log('playSoundWithRetry: Attempting to play sound');
+    audio.play().catch(error => {
+        console.warn('playSoundWithRetry: Failed to play sound, retrying:', error);
+        setTimeout(() => {
+            audio.play().catch(err => console.error('playSoundWithRetry: Retry failed:', err));
+        }, 100);
+    });
+}
+
+function showAnswerPopup(isCorrect, isUnanswered = false) {
+    console.log('showAnswerPopup: Showing answer popup, correct:', isCorrect, 'unanswered:', isUnanswered);
+    const answerMessage = document.getElementById('answer-message');
+    const answerGif = document.getElementById('answer-gif');
+    const answerMeme = document.getElementById('answer-meme');
+    answerMessage.style.display = 'block';
+    answerGif.style.display = 'block';
+    answerMeme.style.display = 'block';
+    
+    let messageText = '';
+    let gifUrl = '';
+    if (isUnanswered) {
+        messageText = 'Waktu Habis! Tidak Dijawab';
+        gifUrl = 'system/wrong.gif';
+        playSoundWithRetry(soundIncorrect);
+    } else {
+        messageText = isCorrect ? 'Jawaban Benar!' : 'Jawaban Salah';
+        gifUrl = isCorrect ? 'system/correct.gif' : 'system/wrong.gif';
+    }
+    
+    answerMessage.textContent = messageText;
+    answerGif.innerHTML = `<img src="${gifUrl}" alt="${isCorrect ? 'Correct' : 'Incorrect'} GIF">`;
+    answerMessage.style.color = isCorrect ? '#07f51b' : '#ff1f1f';
+    
+    setTimeout(() => {
+        answerMessage.style.display = 'none';
+        answerGif.style.display = 'none';
+        answerMeme.style.display = 'none';
+        answerMessage.textContent = '';
+        answerGif.innerHTML = '';
+        answerMeme.innerHTML = '';
+    }, 13000);
+}
+
+async function saveResultsToGAS(namaKelompok, nomor, nilai, waktu) {
+    console.log('saveResultsToGAS: Saving results to Google Sheets');
+    try {
+        const response = await fetchWithTimeout('https://script.google.com/macros/s/AKfycbyHJZjxfrBgOEh0njjfOobwbiHDLpy4ndxuS6hecOWYF8eInuKhCD19Aq-YcpQn6P53Fw/exec', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            mode: 'no-cors',
+            body: JSON.stringify({
+                namaKelompok: namaKelompok,
+                nomor: nomor,
+                nilai: nilai,
+                waktu: waktu
+            }),
+        }, 10000);
+        console.log('saveResultsToGAS: Data sent successfully');
+    } catch (error) {
+        console.error('saveResultsToGAS: Error:', error);
+        alert('Terjadi kesalahan saat mengirim data ke Google Sheets.');
+    }
+}
+
+async function endQuiz() {
+    console.log('endQuiz: Ending quiz');
+    clearInterval(timer);
+    soundStart.pause();
+    soundStart.currentTime = 0;
+    soundEnd.play();
+    
+    const quizContainer = document.getElementById('quiz-container');
+    const header = document.getElementById('header');
+    const optionButtons = document.querySelectorAll('#options-container button');
+    
+    quizContainer.classList.add('quiz-ended');
+    optionButtons.forEach(button => {
+        button.disabled = true;
+        button.onclick = null;
+        button.style.pointerEvents = 'none';
+    });
+    console.log('endQuiz: Answer buttons disabled and click listeners removed');
+    
+    try {
+        await saveResultsToGAS(selectedParticipantName, selectedGroup, score, totalTimeUsed);
+    } catch (error) {
+        console.error('endQuiz: Failed to save results:', error);
+        alert('Gagal menyimpan hasil kuis.');
+        ensureFullScreen();
+    }
+    
+    const congratsMessage = document.getElementById('congratulations-message');
+    console.log('endQuiz: Displaying congratulations message immediately');
+    congratsMessage.style.display = 'block';
+    confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        duration: 3000
+    });
+    
+    setTimeout(() => {
+        congratsMessage.style.display = 'none';
+        quizContainer.style.display = 'none';
+        quizContainer.classList.remove('quiz-ended');
+        document.getElementById('number-grid').style.display = 'none';
+        document.getElementById('select-name-popup').style.display = 'none';
+        document.getElementById('overlay').style.display = 'none';
+        header.style.display = 'none';
+        toggleRekapPopup();
+        ensureFullScreen();
+    }, 4000);
+    
+    document.getElementById('rekapButton').disabled = false;
+}
+
+function toggleRekapPopup() {
+    console.log('toggleRekapPopup: Toggling rekap popup');
+    playSoundWithRetry(soundClick);
+    const rekapPopup = document.getElementById('rekapPopup');
+    const overlay = document.getElementById('overlay');
+    const selectNamePopup = document.getElementById('select-name-popup');
+    const numberGrid = document.getElementById('number-grid');
+    const loadingContainer = document.getElementById('loadingContainer');
+    const header = document.getElementById('header');
+    
+    if (rekapPopup.style.display === 'none' || rekapPopup.style.display === '') {
+        fetchRekapData();
+        rekapPopup.style.display = 'block';
+        overlay.style.display = 'block';
+        selectNamePopup.style.display = 'none';
+        numberGrid.style.display = 'none';
+        loadingContainer.style.display = 'none';
+        header.style.display = 'none';
+    } else {
+        rekapPopup.style.display = 'none';
+        overlay.style.display = 'none';
+        selectNamePopup.style.display = 'block';
+        numberGrid.style.display = 'none';
+        loadingContainer.style.display = 'none';
+        header.style.display = 'none';
+        soundEnd.pause();
+        soundEnd.currentTime = 0;
+        soundWelcome.play();
+        resetQuiz();
+    }
+}
+
+function resetQuiz() {
+    console.log('resetQuiz: Resetting quiz');
+    currentQuestion = 0;
+    score = 0;
+    totalTimeUsed = 0;
+    selectedAnswer = null;
+    selectedGroup = null;
+    selectedParticipantName = '';
+    isAnswerSelected = false;
+    document.getElementById('quiz-container').style.display = 'none';
+    document.getElementById('number-grid').style.display = 'none';
+    document.getElementById('question-text').style.display = 'none';
+    document.getElementById('options-container').innerHTML = '';
+    document.getElementById('loadingContainer').style.display = 'none';
+    const header = document.getElementById('header');
+    header.style.display = 'none';
+    showNamePopup();
+}
+
+function reloadPage() {
+    console.log('reloadPage: Attempting to reload page');
+    playSoundWithRetry(soundClick);
+    const confirmReload = confirm("Apakah yakin ingin melanjutkan? Tekan OK untuk ke Halaman utama, tekan Cancel untuk batal.");
+    if (confirmReload) {
+        console.log('reloadPage: User confirmed, reloading page');
+        localStorage.setItem('fullscreenRequested', 'true');
+        location.reload();
+    } else {
+        console.log('reloadPage: User cancelled, entering fullscreen mode');
+        ensureFullScreen();
+    }
+}
+
+function toggleFullScreen() {
+    console.log('toggleFullScreen: Toggling fullscreen mode');
+    playSoundWithRetry(soundClick);
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch((error) => {
+            console.error('toggleFullScreen: Failed to enter fullscreen:', error);
+            alert(`Gagal masuk mode layar penuh: ${error.message}`);
+        });
+    } else {
+        document.exitFullscreen().catch((error) => {
+            console.error('toggleFullScreen: Failed to exit fullscreen:', error);
+            alert(`Gagal keluar dari mode layar penuh: ${error.message}`);
+        });
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    console.log('DOMContentLoaded: Page loaded');
+    const header = document.getElementById('header');
+    header.style.display = 'none';
+    if (!localStorage.getItem('fullscreenRequested')) {
+        document.getElementById('welcome-screen').style.display = 'flex';
+    } else {
+        ensureFullScreen();
+    }
+    document.getElementById("number-grid").style.display = "none";
+    initializeClickSound();
+});
+
+window.addEventListener("load", function() {
+    console.log('window.load: Initializing volume');
+    initializeVolume();
+    document.getElementById('volume-slider').addEventListener('input', (e) => {
+        setVolume(e.target.value);
+    });
+    document.getElementById('volume-slider-popup').addEventListener('input', (e) => {
+        setVolume(e.target.value);
+    });
+});
+</script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'932dd5c0fdae4552',t:'MTc0NTA4MDczNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+</body>
+</html>
